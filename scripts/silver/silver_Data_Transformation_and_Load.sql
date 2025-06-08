@@ -44,7 +44,7 @@ BEGIN
 				FROM bronze.crm_cust_info 
 				where cst_id is not null
 			)t 
-		where flag_last = 1;
+		where flag_last = 1;  --most recent record per customer
 		
 		
 		
@@ -75,7 +75,8 @@ BEGIN
 				ELSE 'n/a'
 			END AS prd_line,
 			CAST(prd_start_dt AS DATE) AS prd_start_dt,
-			CAST(LEAD(prd_start_dt) OVER (PARTITION BY prd_key ORDER BY prd_start_dt)-1 AS DATE) AS prd_end_dt
+			CAST(LEAD(prd_start_dt) OVER (PARTITION BY prd_key ORDER BY prd_start_dt)-1 AS DATE) AS prd_end_dt  
+			-- Calculate end date as one day before the next start date
 		FROM DataWarehouse.bronze.crm_prd_info;
 		
 		TRUNCATE TABLE silver.crm_sales_details;
@@ -111,12 +112,12 @@ BEGIN
 			WHEN sls_sales IS NULL OR sls_sales <= 0 OR sls_sales != sls_quantity * ABS(sls_price) 
 				THEN sls_quantity * ABS(sls_price)
 			ELSE sls_sales
-		END AS sls_sales,
+		END AS sls_sales,  -- Recalculate sales if original value is missing or incorrect
 		sls_quantity,
 		CASE 
 			WHEN sls_price IS NULL OR sls_price <= 0 
 				THEN sls_sales / NULLIF(sls_quantity, 0)
-			ELSE sls_price 
+			ELSE sls_price   -- Derive price if original value is invalid
 		END AS sls_price
 		from bronze.crm_sales_details;
 		
